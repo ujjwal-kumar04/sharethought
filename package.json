@@ -1,0 +1,25 @@
+{
+  "name": "sharethought",
+  "version": "1.0.0",
+  "description": "Full-stack social media platform with real-time chat",
+  "scripts": {
+    "install-all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "social-media",
+    "react",
+    "nodejs",
+    "mongodb",
+    "socket.io",
+    "real-time-chat"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
