@@ -18,18 +18,47 @@ import User from './models/User.js';
 
 dotenv.config();
 
+// Check critical environment variables
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
+  console.error('Please set these in your Render dashboard environment variables');
+}
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL ,
-    methods: ['GET', 'POST']
+    origin: process.env.FRONTEND_URL || '*',
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    env: {
+      jwtSecret: !!process.env.JWT_SECRET,
+      mongodbUri: !!process.env.MONGODB_URI,
+      frontendUrl: !!process.env.FRONTEND_URL,
+      emailUser: !!process.env.EMAIL_USER
+    }
+  };
+  res.json(health);
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -39,9 +68,20 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // MongoDB Connection
+if (!process.env.MONGODB_URI) {
+  console.error('❌ MONGODB_URI is not set');
+  process.exit(1);
+}
+
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+  .then(() => {
+    console.log('✅ MongoDB Connected');
+    console.log('📊 Database:', mongoose.connection.name);
+  })
+  .catch(err => {
+    console.error('❌ MongoDB Connection Error:', err.message);
+    process.exit(1);
+  });
 
 // Socket.IO Authentication Middleware
 io.use(async (socket, next) => {
