@@ -1,42 +1,129 @@
 import { createTransport } from 'nodemailer';
 
-// Email transporter configuration
+// Email transporter configuration - supports multiple providers
 const createTransporter = () => {
+  // Check for Resend API Key first (recommended for Render)
+  if (process.env.RESEND_API_KEY) {
+    console.log('📧 Using Resend email service');
+    return createTransport({
+      host: 'smtp.resend.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: 'resend',
+        pass: process.env.RESEND_API_KEY
+      }
+    });
+  }
+  
+  // Check for Brevo (Sendinblue) - also works well on Render
+  if (process.env.BREVO_API_KEY) {
+    console.log('📧 Using Brevo email service');
+    return createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.BREVO_API_KEY
+      }
+    });
+  }
+
   // Check if email credentials are configured
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
     console.warn('⚠️ Email credentials not configured. OTP emails will not be sent.');
     return null;
   }
   
-  const transporter = createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD
-    },
-    tls: {
-      rejectUnauthorized: false
-    },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 5000,
-    socketTimeout: 15000,
-    debug: false,
-    logger: false
-  });
+  // Determine email provider from EMAIL_USER
+  const emailUser = process.env.EMAIL_USER;
+  let transportConfig;
+  
+  if (emailUser.includes('@gmail.com')) {
+    // Gmail configuration with multiple fallback options
+    transportConfig = {
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // Use SSL
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      },
+      tls: {
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
+      }
+    };
+  } else if (emailUser.includes('@outlook.com') || emailUser.includes('@hotmail.com')) {
+    // Outlook/Hotmail configuration
+    transportConfig = {
+      host: 'smtp-mail.outlook.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      },
+      tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false
+      }
+    };
+  } else if (emailUser.includes('@yahoo.com')) {
+    // Yahoo configuration
+    transportConfig = {
+      host: 'smtp.mail.yahoo.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    };
+  } else {
+    // Generic SMTP configuration (for custom domains or other providers)
+    // Uses SMTP_HOST and SMTP_PORT env variables if available
+    transportConfig = {
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT) || 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    };
+  }
+
+  // Add common settings
+  transportConfig.connectionTimeout = 30000; // 30 seconds (increased)
+  transportConfig.greetingTimeout = 15000;   // 15 seconds (increased)
+  transportConfig.socketTimeout = 30000;     // 30 seconds (increased)
+  transportConfig.pool = true;               // Use pooled connections
+  transportConfig.maxConnections = 5;
+  transportConfig.maxMessages = 100;
+
+  console.log(`📧 Creating email transporter for: ${emailUser}`);
+  console.log(`📧 SMTP Host: ${transportConfig.host}:${transportConfig.port}`);
+  
+  const transporter = createTransport(transportConfig);
 
   // Verify transporter configuration (async, won't block)
-  transporter.verify(function (error, success) {
-    if (error) {
-      console.error('❌ Email transporter verification failed:', error.message);
-      console.error('🔴 Check: EMAIL_USER and EMAIL_PASSWORD in environment variables');
-      console.error('🔴 Gmail users: Use App Password, not regular password');
-    } else {
+  transporter.verify()
+    .then(() => {
       console.log('✅ Email server is ready to send messages');
-    }
-  });
+    })
+    .catch((error) => {
+      console.error('❌ Email transporter verification failed:', error.message);
+      console.error('🔴 Tips to fix:');
+      console.error('   1. For Gmail: Enable 2FA and create App Password');
+      console.error('   2. App Password: https://myaccount.google.com/apppasswords');
+      console.error('   3. Use App Password (16 chars without spaces)');
+      console.error('   4. Check if "Less secure apps" is needed for your account');
+    });
 
   return transporter;
 };
@@ -160,37 +247,56 @@ export const sendOTPEmail = async (email, otp, name) => {
     };
 
     console.log(`📧 Sending OTP email to: ${email}`);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ OTP Email sent successfully!');
-    console.log('📬 Message ID:', info.messageId);
-    console.log('📨 Response:', info.response);
-    return true;
+    
+    // Try sending email with retry mechanism
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`📧 Attempt ${attempt}/3 to send email...`);
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ OTP Email sent successfully!');
+        console.log('📬 Message ID:', info.messageId);
+        console.log('📨 Response:', info.response);
+        return true;
+      } catch (sendError) {
+        lastError = sendError;
+        console.error(`❌ Attempt ${attempt} failed:`, sendError.message);
+        if (attempt < 3) {
+          console.log(`⏳ Waiting 2 seconds before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
+    
+    // All retries failed, throw error
+    throw lastError;
   } catch (error) {
     console.error('❌ Error sending OTP email:', error.message);
     if (error.code) {
       console.error('Error Code:', error.code);
       
       // Provide helpful error messages
-      if (error.code === 'ETIMEDOUT') {
-        console.error('🔴 Connection timeout - Check:');
-        console.error('   1. EMAIL_USER is a valid Gmail address');
-        console.error('   2. EMAIL_PASSWORD is Gmail App Password (16 chars)');
-        console.error('   3. Not using regular Gmail password');
+      if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
+        console.error('🔴 Connection timeout - Possible causes:');
+        console.error('   1. Render blocks some SMTP ports');
+        console.error('   2. Try using port 465 with secure: true');
+        console.error('   3. EMAIL_PASSWORD should be App Password (16 chars)');
+        console.error('   4. Try alternative: Use Resend, SendGrid, or Mailgun');
       } else if (error.code === 'EAUTH') {
         console.error('🔴 Authentication failed - Check:');
         console.error('   1. Enable 2-Step Verification in Gmail');
         console.error('   2. Generate App Password in Google Account');
         console.error('   3. Use App Password, not account password');
+      } else if (error.code === 'ECONNREFUSED') {
+        console.error('🔴 Connection refused - SMTP blocked on this server');
       }
     }
     if (error.response) {
       console.error('SMTP Response:', error.response);
     }
     
-    // Don't throw error, just log it
-    console.warn('⚠️ Continuing without email... (Development mode)');
-    console.log(`\n📝 OTP for ${email}: ${otp}\n`);
-    return false;
+    // Throw error so registration fails properly
+    throw new Error(`Failed to send OTP email: ${error.message}. Please try again or contact support.`);
   }
 };
 
