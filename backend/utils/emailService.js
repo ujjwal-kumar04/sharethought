@@ -46,14 +46,14 @@ export const sendOTPEmail = async (email, otp, name) => {
   try {
     const transporter = createTransporter();
     
-    // If email is not configured, log OTP to console for development
+    // If email is not configured, throw error
     if (!transporter) {
       console.log('\n' + '='.repeat(60));
       console.log('⚠️ EMAIL NOT CONFIGURED - Development Mode');
       console.log(`📧 OTP for ${email}: ${otp}`);
       console.log(`👤 Name: ${name}`);
       console.log('='.repeat(60) + '\n');
-      return; // Don't fail, just skip email
+      throw new Error('Email service not configured. Please check EMAIL_USER and EMAIL_PASSWORD environment variables.');
     }
 
     const mailOptions = {
@@ -198,6 +198,12 @@ export const sendOTPEmail = async (email, otp, name) => {
 export const sendWelcomeEmail = async (email, name) => {
   try {
     const transporter = createTransporter();
+    
+    // If email is not configured, just log and return
+    if (!transporter) {
+      console.log(`⚠️ Email not configured. Skipping welcome email for ${email}`);
+      return false;
+    }
 
     const mailOptions = {
       from: `"ShareThought" <${process.env.EMAIL_USER}>`,

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const AuthContext = createContext();
 
@@ -17,16 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchCurrentUser(token);
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchCurrentUser = async (token) => {
+  const fetchCurrentUser = useCallback(async (token) => {
     try {
       const response = await axios.get(`${API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -38,29 +29,47 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchCurrentUser(token);
+    } else {
+      setLoading(false);
+    }
+  }, [fetchCurrentUser]);
+
+  const login = useCallback(async (email, password) => {
     const response = await axios.post(`${API_URL}/auth/login`, { email, password });
     localStorage.setItem('token', response.data.token);
     await fetchCurrentUser(response.data.token);
     return response.data;
-  };
+  }, [fetchCurrentUser]);
 
-  const register = async (name, username, email, password) => {
+  const register = useCallback(async (name, username, email, password) => {
     const response = await axios.post(`${API_URL}/auth/register`, { name, username, email, password });
     localStorage.setItem('token', response.data.token);
     await fetchCurrentUser(response.data.token);
     return response.data;
-  };
+  }, [fetchCurrentUser]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    setUser,
+    login,
+    register,
+    logout,
+    loading
+  }), [user, login, register, logout, loading]);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );

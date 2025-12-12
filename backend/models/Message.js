@@ -26,4 +26,8 @@ const messageSchema = new mongoose.Schema({
   }
 });
 
+// Add indexes for frequently queried fields
+messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
+messageSchema.index({ receiver: 1, read: 1 });
+
 export default mongoose.model('Message', messageSchema);

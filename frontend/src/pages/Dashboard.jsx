@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import CreatePost from '../components/CreatePost';
 import MobileNav from '../components/MobileNav';
 import PostCard from '../components/PostCard';
@@ -16,6 +16,19 @@ function Dashboard() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const { user } = useAuth();
 
+  const fetchPosts = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/posts`, {
+        headers: getAuthHeaders()
+      });
+      setPosts(response.data);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPosts();
     
@@ -28,34 +41,21 @@ function Dashboard() {
     return () => {
       socketService.disconnect();
     };
+  }, [fetchPosts]);
+
+  const handlePostCreated = useCallback((newPost) => {
+    setPosts(prevPosts => [newPost, ...prevPosts]);
   }, []);
 
-  const fetchPosts = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/posts`, {
-        headers: getAuthHeaders()
-      });
-      setPosts(response.data);
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handlePostDeleted = useCallback((postId) => {
+    setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
+  }, []);
 
-  const handlePostCreated = (newPost) => {
-    setPosts([newPost, ...posts]);
-  };
-
-  const handlePostDeleted = (postId) => {
-    setPosts(posts.filter(post => post._id !== postId));
-  };
-
-  const handlePostUpdated = (updatedPost) => {
-    setPosts(posts.map(post => 
+  const handlePostUpdated = useCallback((updatedPost) => {
+    setPosts(prevPosts => prevPosts.map(post => 
       post._id === updatedPost._id ? updatedPost : post
     ));
-  };
+  }, []);
 
   if (loading) {
     return <div className="loading">Loading...</div>;

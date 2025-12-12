@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAuthHeaders, useAuth } from '../context/AuthContext';
 import '../styles/Post.css';
@@ -21,14 +21,17 @@ function PostCard({ post, onDelete, onUpdate }) {
   const [replyText, setReplyText] = useState('');
   const [showReplies, setShowReplies] = useState({});
 
-  const isLiked = localPost.likes.includes(user._id);
-  const isOwner = localPost.author._id === user._id;
+  const isLiked = useMemo(() => localPost.likes.includes(user._id), [localPost.likes, user._id]);
+  const isOwner = useMemo(() => localPost.author._id === user._id, [localPost.author._id, user._id]);
   
-  const contentLines = localPost.content.split('\n');
-  const shouldTruncate = contentLines.length > 3;
-  const displayContent = showFullContent 
-    ? localPost.content 
-    : contentLines.slice(0, 3).join('\n');
+  const { contentLines, shouldTruncate, displayContent } = useMemo(() => {
+    const lines = localPost.content.split('\n');
+    return {
+      contentLines: lines,
+      shouldTruncate: lines.length > 3,
+      displayContent: showFullContent ? localPost.content : lines.slice(0, 3).join('\n')
+    };
+  }, [localPost.content, showFullContent]);
 
   const handleLike = async () => {
     try {

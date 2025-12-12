@@ -55,23 +55,30 @@ router.post('/register', [
     user.otpAttempts = 0;
     await user.save();
 
-    // Send OTP email (non-blocking)
+    // Send OTP email
     console.log(`\n${'='.repeat(60)}`);
     console.log(`🔐 OTP for ${email}: ${otp}`);
     console.log(`${'='.repeat(60)}\n`);
     
-    const emailSent = await sendOTPEmail(email, otp, name);
-    
-    const message = emailSent 
-      ? 'Registration successful. Please verify OTP sent to your email.'
-      : 'Registration successful. Please check console logs for OTP (email not configured).';
-
-    res.status(201).json({
-      message,
-      userId: user._id,
-      email: user.email,
-      emailSent
-    });
+    try {
+      await sendOTPEmail(email, otp, name);
+      console.log('✅ OTP email sent successfully to:', email);
+      
+      res.status(201).json({
+        message: 'Registration successful. Please verify OTP sent to your email.',
+        userId: user._id,
+        email: user.email,
+        emailSent: true
+      });
+    } catch (emailError) {
+      console.error('❌ Failed to send OTP email:', emailError.message);
+      // Delete user if email fails since they can't verify
+      await User.findByIdAndDelete(user._id);
+      return res.status(500).json({ 
+        error: 'Failed to send verification email. Please check your email address and try again.',
+        details: 'Email service configuration error'
+      });
+    }
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Server error' });

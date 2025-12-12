@@ -20,7 +20,8 @@ router.get('/', authMiddleware, async (req, res) => {
 
     const users = await User.find(query)
       .select('username email bio followers following')
-      .limit(20);
+      .limit(20)
+      .lean();
 
     res.json(users);
   } catch (error) {

@@ -123,6 +123,8 @@ io.use(async (socket, next) => {
 
 // Online users tracking
 const onlineUsers = new Map();
+// User cache to reduce DB queries
+const userCache = new Map();
 
 // Socket.IO Connection Handler
 io.on('connection', (socket) => {
@@ -143,9 +145,9 @@ io.on('connection', (socket) => {
       const { receiverId, message } = data;
       console.log(`📨 Message from ${socket.userId} to ${receiverId}: ${message}`);
 
-      // Check if users are mutual followers
-      const sender = await User.findById(socket.userId);
-      const receiver = await User.findById(receiverId);
+      // Check if users are mutual followers (optimized with select)
+      const sender = await User.findById(socket.userId).select('username following').lean();
+      const receiver = await User.findById(receiverId).select('username following').lean();
 
       if (!sender || !receiver) {
         socket.emit('error', { message: 'User not found' });

@@ -60,4 +60,9 @@ const postSchema = new mongoose.Schema({
   }
 });
 
+// Add indexes for frequently queried fields
+postSchema.index({ author: 1, createdAt: -1 });
+postSchema.index({ createdAt: -1 });
+postSchema.index({ likes: 1 });
+
 export default mongoose.model('Post', postSchema);

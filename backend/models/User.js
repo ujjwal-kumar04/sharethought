@@ -61,4 +61,10 @@ const userSchema = new mongoose.Schema({
   }
 });
 
+// Add indexes for frequently queried fields
+userSchema.index({ email: 1 });
+userSchema.index({ username: 1 });
+userSchema.index({ followers: 1 });
+userSchema.index({ following: 1 });
+
 export default mongoose.model('User', userSchema);

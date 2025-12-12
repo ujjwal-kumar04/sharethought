@@ -38,7 +38,8 @@ router.get('/', authMiddleware, async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('author', 'username')
       .populate('comments.user', 'username')
-      .limit(50);
+      .limit(50)
+      .lean();
 
     res.json(posts);
   } catch (error) {
@@ -53,7 +54,8 @@ router.get('/user/:userId', authMiddleware, async (req, res) => {
     const posts = await Post.find({ author: req.params.userId })
       .sort({ createdAt: -1 })
       .populate('author', 'username')
-      .populate('comments.user', 'username');
+      .populate('comments.user', 'username')
+      .lean();
 
     res.json(posts);
   } catch (error) {
