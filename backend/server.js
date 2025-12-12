@@ -67,21 +67,43 @@ app.use('/api/posts', postRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// MongoDB Connection
+// MongoDB Connection with retry logic
 if (!process.env.MONGODB_URI) {
   console.error('❌ MONGODB_URI is not set');
   process.exit(1);
 }
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
+      socketTimeoutMS: 45000,
+    });
     console.log('✅ MongoDB Connected');
     console.log('📊 Database:', mongoose.connection.name);
-  })
-  .catch(err => {
+  } catch (err) {
     console.error('❌ MongoDB Connection Error:', err.message);
+    console.error('\n🔴 SOLUTION: Go to MongoDB Atlas:');
+    console.error('   1. Login to https://cloud.mongodb.com');
+    console.error('   2. Select your cluster');
+    console.error('   3. Go to "Network Access" in left sidebar');
+    console.error('   4. Click "Add IP Address"');
+    console.error('   5. Click "Allow Access from Anywhere" (0.0.0.0/0)');
+    console.error('   6. Click "Confirm"\n');
     process.exit(1);
-  });
+  }
+};
+
+connectDB();
+
+// Handle MongoDB connection errors after initial connection
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected');
+});
 
 // Socket.IO Authentication Middleware
 io.use(async (socket, next) => {
