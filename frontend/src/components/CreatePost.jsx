@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { getAuthHeaders } from '../context/AuthContext';
 import '../styles/Post.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sharethought-pyuh.onrender.com/api';
 
 function CreatePost({ onPostCreated }) {
   const [title, setTitle] = useState('');

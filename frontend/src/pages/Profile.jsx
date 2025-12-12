@@ -4,7 +4,7 @@ import MobileNav from '../components/MobileNav';
 import { getAuthHeaders, useAuth } from '../context/AuthContext';
 import '../styles/Profile.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sharethought-pyuh.onrender.com/api';
 
 function Profile() {
   const { user, setUser } = useAuth();

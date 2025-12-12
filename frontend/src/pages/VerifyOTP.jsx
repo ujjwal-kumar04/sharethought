@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Auth.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sharethought-pyuh.onrender.com/api';
 
 function VerifyOTP() {
   const [otp, setOtp] = useState('');

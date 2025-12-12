@@ -5,7 +5,7 @@ import PostCard from '../components/PostCard';
 import { getAuthHeaders, useAuth } from '../context/AuthContext';
 import '../styles/Profile.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sharethought-pyuh.onrender.com/api';
 
 function UserProfile() {
   const { userId } = useParams();

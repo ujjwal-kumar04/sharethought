@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAuthHeaders, useAuth } from '../context/AuthContext';
 import '../styles/UserSearch.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sharethought-pyuh.onrender.com/api';
 
 function UserSearch() {
   const [search, setSearch] = useState('');

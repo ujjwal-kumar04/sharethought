@@ -5,7 +5,7 @@ import { getAuthHeaders } from '../context/AuthContext';
 import socketService from '../services/socket';
 import '../styles/NotificationBell.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sharethought-pyuh.onrender.com/api';
 
 function NotificationBell() {
   const [notifications, setNotifications] = useState([]);

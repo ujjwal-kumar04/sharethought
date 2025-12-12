@@ -8,7 +8,7 @@ class SocketService {
   connect(token) {
     if (this.socket?.connected) return;
 
-    this.socket = io('http://localhost:5000', {
+    this.socket = io('https://sharethought-pyuh.onrender.com', {
       auth: { token }
     });
 

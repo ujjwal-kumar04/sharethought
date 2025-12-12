@@ -6,7 +6,7 @@ import { getAuthHeaders, useAuth } from '../context/AuthContext';
 import socketService from '../services/socket';
 import '../styles/Chat.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://sharethought-pyuh.onrender.com/api';
 
 function Chat() {
   const { userId } = useParams();
