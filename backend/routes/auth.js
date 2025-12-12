@@ -55,14 +55,22 @@ router.post('/register', [
     user.otpAttempts = 0;
     await user.save();
 
-    // Send OTP email
-    console.log(`OTP for ${email}: ${otp}`);
-    await sendOTPEmail(email, otp, name);
+    // Send OTP email (non-blocking)
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`🔐 OTP for ${email}: ${otp}`);
+    console.log(`${'='.repeat(60)}\n`);
+    
+    const emailSent = await sendOTPEmail(email, otp, name);
+    
+    const message = emailSent 
+      ? 'Registration successful. Please verify OTP sent to your email.'
+      : 'Registration successful. Please check console logs for OTP (email not configured).';
 
     res.status(201).json({
-      message: 'Registration successful. Please verify OTP sent to your email.',
+      message,
       userId: user._id,
-      email: user.email
+      email: user.email,
+      emailSent
     });
   } catch (error) {
     console.error('Registration error:', error);

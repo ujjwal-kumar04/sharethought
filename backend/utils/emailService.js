@@ -2,23 +2,37 @@ import { createTransport } from 'nodemailer';
 
 // Email transporter configuration
 const createTransporter = () => {
-  // For development, you can use Gmail or any SMTP service
-  // For production, use services like SendGrid, AWS SES, etc.
+  // Check if email credentials are configured
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.warn('⚠️ Email credentials not configured. OTP emails will not be sent.');
+    return null;
+  }
   
   const transporter = createTransport({
     service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD
     },
-    debug: true, // Enable debug output
-    logger: true // Log to console
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 5000,
+    socketTimeout: 15000,
+    debug: false,
+    logger: false
   });
 
-  // Verify transporter configuration
+  // Verify transporter configuration (async, won't block)
   transporter.verify(function (error, success) {
     if (error) {
-      console.error('❌ Email transporter verification failed:', error);
+      console.error('❌ Email transporter verification failed:', error.message);
+      console.error('🔴 Check: EMAIL_USER and EMAIL_PASSWORD in environment variables');
+      console.error('🔴 Gmail users: Use App Password, not regular password');
     } else {
       console.log('✅ Email server is ready to send messages');
     }
@@ -31,6 +45,16 @@ const createTransporter = () => {
 export const sendOTPEmail = async (email, otp, name) => {
   try {
     const transporter = createTransporter();
+    
+    // If email is not configured, log OTP to console for development
+    if (!transporter) {
+      console.log('\n' + '='.repeat(60));
+      console.log('⚠️ EMAIL NOT CONFIGURED - Development Mode');
+      console.log(`📧 OTP for ${email}: ${otp}`);
+      console.log(`👤 Name: ${name}`);
+      console.log('='.repeat(60) + '\n');
+      return; // Don't fail, just skip email
+    }
 
     const mailOptions = {
       from: `"ShareThought" <${process.env.EMAIL_USER}>`,
@@ -145,10 +169,27 @@ export const sendOTPEmail = async (email, otp, name) => {
     console.error('❌ Error sending OTP email:', error.message);
     if (error.code) {
       console.error('Error Code:', error.code);
+      
+      // Provide helpful error messages
+      if (error.code === 'ETIMEDOUT') {
+        console.error('🔴 Connection timeout - Check:');
+        console.error('   1. EMAIL_USER is a valid Gmail address');
+        console.error('   2. EMAIL_PASSWORD is Gmail App Password (16 chars)');
+        console.error('   3. Not using regular Gmail password');
+      } else if (error.code === 'EAUTH') {
+        console.error('🔴 Authentication failed - Check:');
+        console.error('   1. Enable 2-Step Verification in Gmail');
+        console.error('   2. Generate App Password in Google Account');
+        console.error('   3. Use App Password, not account password');
+      }
     }
     if (error.response) {
       console.error('SMTP Response:', error.response);
     }
+    
+    // Don't throw error, just log it
+    console.warn('⚠️ Continuing without email... (Development mode)');
+    console.log(`\n📝 OTP for ${email}: ${otp}\n`);
     return false;
   }
 };

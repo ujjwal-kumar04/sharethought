@@ -24,13 +24,19 @@ Go to your Render dashboard → Your backend service → Environment tab and add
    - Value: Your frontend Vercel URL
    - Example: `https://your-app.vercel.app`
 
-4. **EMAIL_USER** (for OTP emails)
+4. **EMAIL_USER** (for OTP emails - Optional but recommended)
    - Value: Your Gmail address
    - Example: `youremail@gmail.com`
 
-5. **EMAIL_PASSWORD** (for OTP emails)
+5. **EMAIL_PASSWORD** (for OTP emails - Optional but recommended)
    - Value: Gmail App Password (NOT your regular password)
    - Get this from: Google Account → Security → 2-Step Verification → App passwords
+   
+   **Important for Gmail:**
+   - Must enable 2-Step Verification first
+   - App Password is 16 characters (no spaces)
+   - Use App Password, NOT your regular Gmail password
+   - If not configured, OTP will show in backend logs (dev mode)
 
 ### Optional but Recommended:
 
@@ -50,13 +56,35 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 Copy the output and paste it as the JWT_SECRET value.
 
-## Step 3: Get Gmail App Password
+## Step 3: Get Gmail App Password (CRITICAL - Common Error Source!)
 
-1. Go to your Google Account settings
-2. Security → 2-Step Verification (enable if not already)
-3. App passwords → Select app: Mail → Select device: Other (Custom name)
-4. Name it "ShareThought" → Generate
-5. Copy the 16-character password and use it as EMAIL_PASSWORD
+### Important: This is NOT your Gmail password!
+
+1. **Enable 2-Step Verification First:**
+   - Go to: https://myaccount.google.com/security
+   - Find "2-Step Verification" → Turn it ON
+   - Follow the setup process
+
+2. **Generate App Password:**
+   - Go to: https://myaccount.google.com/apppasswords
+   - Or: Google Account → Security → 2-Step Verification → App passwords
+   - Select app: **Mail**
+   - Select device: **Other (Custom name)**
+   - Name it: "ShareThought"
+   - Click **Generate**
+
+3. **Copy the 16-character password:**
+   - Format: `xxxx xxxx xxxx xxxx` (remove spaces)
+   - Example: `abcdabcdabcdabcd`
+   - Use this as EMAIL_PASSWORD in Render
+
+4. **Common Mistakes to Avoid:**
+   - ❌ Using your regular Gmail password
+   - ❌ Not enabling 2-Step Verification first
+   - ❌ Including spaces in the App Password
+   - ❌ Using an old/revoked App Password
+
+**Note:** If you skip email setup, the app will still work but OTPs will only show in backend logs.
 
 ## Step 4: Verify Configuration
 
